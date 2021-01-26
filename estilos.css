@@ -1,0 +1,264 @@
+*{
+    margin:0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body{
+    font-family: 'Open Sans', sans-serif;
+}
+
+nav{
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    justify-content: flex-start;
+}
+
+nav a{
+    color:#fff;
+    text-decoration: none;
+}
+
+.icono{
+    display: block;
+    z-index: 100000000;
+    animation: moverIzquierda 1s ease-in;
+}
+
+header{
+    background: #DA4453;  /* fallback for old browsers */
+    background: -webkit-linear-gradient(to right, #89216B, #DA4453);  /* Chrome 10-25, Safari 5.1-6 */
+    background: linear-gradient(to right, #89216B, #DA4453); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */    
+    height: auto;
+    padding: 48px;
+    width: 100%;
+}
+
+.container{
+    width: 95%;
+    max-width: 1200px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    margin: auto;
+    
+}
+.di{
+    text-decoration: none;
+    font-size: 12px;
+}
+
+#make {
+    color:rgb(255, 255, 255);
+    text-transform: none;
+    font-size:36px;
+    font-weight:bold;
+    padding-top:10px;  
+    position: static;
+    width:100%;
+    bottom:45%;
+    display:block;
+    }
+
+    #flip {
+    height:50px;
+    overflow:hidden;
+    }
+
+    #flip > div > div {
+    color:#fff;
+    padding:4px 12px;
+    height:45px;
+    margin-bottom:45px;
+    display:inline-block;
+    }
+
+    #flip div:first-child {
+    animation: show 5s linear infinite;
+    }
+
+    #flip div div {
+    background:#42c58a;
+    }
+    #flip div:first-child div {
+    background:#4ec7f3;
+    }
+    #flip div:last-child div {
+    background:#DC143C;
+    } 
+
+    @keyframes show {
+    0% {margin-top:-270px;}
+    5% {margin-top:-180px;}
+    33% {margin-top:-180px;}
+    38% {margin-top:-90px;}
+    66% {margin-top:-90px;}
+    71% {margin-top:0px;}
+    99.99% {margin-top:0px;}
+    100% {margin-top:-270px;}
+    }
+
+
+
+img{
+    display: block;
+    height: 450px;
+    object-fit: cover;
+    
+}
+
+.textos{
+    width: 50%;
+    color:#fff;
+}
+
+.textos h1{
+    font-size:80px;
+    position:static;
+    display: inline-block;
+    text-align: center;
+    padding: 5px;
+    border-radius: 3px;
+    
+    
+
+}
+h1{
+    position:static;
+    display: inline-block;
+    text-align: center;
+    padding: 5px;
+    border-radius: 3px;
+}
+
+.textos h2{
+    font-size:30px;
+    
+}
+span.di {
+    font-size: 20px;
+    position:static;
+    display: inline-block;
+    text-align: center;
+    padding: 5px;
+    border-radius: 3px;
+    color: #ff6c00;
+  }
+
+.textos a{
+    display: inline-block;
+    color:#fff;
+    font-weight: 300;
+    text-decoration: none;
+    margin-top: 30px;
+    border: 1px solid #fff;
+    width: 150px;
+    border-radius: 3px;
+    text-align: center;
+    padding: 10px 0;
+    
+
+}
+
+.wave{
+    height: 100px;
+    width: 100%;
+    background: #DA4453;  /* fallback for old browsers */
+    background: -webkit-linear-gradient(to right, #89216B, #DA4453);  /* Chrome 10-25, Safari 5.1-6 */
+    background: linear-gradient(to right, #89216B, #DA4453); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */    
+}
+
+.enlaces{
+    position: fixed;
+    display: flex;
+    top: 0;
+    background: #000;
+    justify-content: space-around;
+    align-items: center;
+    height: 100vh;
+    right: 0;
+    flex-direction: column;
+    width: 100%;
+    transition: all 1s ease;
+    background: #bc4e9c;  /* fallback for old browsers */
+background: -webkit-linear-gradient(to right, #f80759, #bc4e9c);  /* Chrome 10-25, Safari 5.1-6 */
+background: linear-gradient(to right, #f80759, #bc4e9c); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+
+}
+
+.uno{
+    
+-webkit-clip-path: circle(0% at 0 0);
+clip-path: circle(0% at 0 0);
+
+}
+
+.dos{
+    
+    -webkit-clip-path: circle(150% at 0 0);
+    clip-path: circle(150% at 0 0);
+    
+    }
+
+
+
+@media screen and (max-width:800px){
+    img{
+        height: 370px;
+    }
+    .textos h1{
+        font-size: 70px;
+    }
+
+    .textos h2{
+        font-size: 25px;
+    }
+    
+}
+
+@media screen and (max-width:700px){
+    img{
+        height: 250px;
+    }
+    .textos h1{
+        font-size: 40px;
+    }
+
+    .textos h2{
+        font-size: 15px;
+    }
+    
+}
+
+@media screen and (max-width:450px){
+    .container{
+        width: 100%;
+        flex-wrap: wrap-reverse;
+        justify-content: center;
+    }
+    .textos{
+        width: 100%;
+        text-align: center;
+    }
+    .textos h1{
+        font-size: 60px;
+    }    
+}
+
+@media screen and (max-width:340px){
+    img{
+        height: 160px;
+    }
+    .textos h1{
+        font-size: 35px;
+    }
+    .textos a{
+        width: 120px;
+    }
+    .textos h2{
+        font-size: 15px;
+    }
+    
+}
