@@ -1,416 +1,51 @@
-<html lang="es">
-<head>
 <!DOCTYPE html>
-<html lang="en">
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YouTube Shuffle</title>
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
-  
-<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" type="text/css">
-<style>
+<html lang="es">
 
-body { font-family: "Open Sans", sans-serif; }
-.padded { padding: 1em; }
-.pointer { cursor: pointer; }
-
-#list, #video
-{
-	display: inline-block;
-	vertical-align: top;
-}
-
-div#list
-{
-	min-width: 300px;
-	max-width: 20%;
-}
-
-div#video
-{
-	min-width: 700px;
-	max-width: 80%;
-}
-
-div#list ul
-{
-	list-style-type: none;
-	margin: 0;
-	padding: 0;
-	height: 30em;
-	overflow: auto;
-}
-
-div#list li
-{
-	margin-bottom: 0.5em;
-}
-
-div#list li:hover
-{
-	background: #F1F1F1;
-}
-
-div#list .start-at span
-{
-	font-size: 80%;
-}
-
-div#list .start-at input
-{
-	width: 2em;
-}
-
-.ellipsis
-{
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	overflow: hidden;
-}
-</style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.0.0/knockout-min.js"></script>
-<script src="https://rawgit.com/IntoMethod/Lightweight-JSONP/master/jsonp.js"></script>
-<script src="https://www.youtube.com/iframe_api"></script>
-<script>
-let YouTubeKey = "AIzaSyAisMjMkDHv7r5lR0B6Bga-QKMEhR4_Cgs";
-function onYouTubeIframeAPIReady() { ko.applyBindings(new Model()); }
-
-function ItemModel(Options)
-{
-	Options = Options || {};
-	let Item = {};
-	Item.Code = Options.Code;
-	Item.Title = Options.Title || ("Untitled (" + Options.Code + ")");
-	Item.StartAt = ko.observable(Options.StartAt || 0);
-	return Item;
-}
-
-function Model()
-{
-	let Self = this;
-	let Player;
-	Self.List = ko.observableArray();
-	Self.Filter = ko.observable();
-	Self.FilteredList = ko.computed(FilteredList).extend({ "throttle": 100 });
-	Self.SearchResults = ko.observableArray();
-	let LocalStorageKey = "YouTubePlaylist";
-
-	Self.InputValue = ko.observable();
-	Self.ProcessInput = function()
-	{
-		let Input = Self.InputValue();
-
-		let Expression = /^https?:\/\/(?:[0-9A-Z-]+\.)?(?:youtu\.be\/|youtube(?:-nocookie)?\.com\S*[^\w\s-])([\w-]{11})(?=[^\w-]|$)(?![?=&+%\w.-]*(?:['"][^<>]*>|<\/a>))[?=&+%\w.-]*/ig;
-		let Match = Expression.exec(Input);
-		if (Match && Match[1] && Match[1].length == 11)
-			AddVideoByCode(Match[1]);
-		else
-			SearchYouTube(Input);
-	}
-
-	Self.AddToList = function(Code, Title)
-	{
-		Self.List.push(new ItemModel({ "Code": Code, "Title": Title }));
-	}
-
-	function AddVideoByCode(Code)
-	{
-		JSONP.get
-		(
-			"https://www.googleapis.com/youtube/v3/videos",
-			{
-				"part": "snippet",
-				"id": Code,
-				"key": YouTubeKey,
-			},
-			function(data)
-			{
-				let snippet = (((data || {}).items || [])[0] || {}).snippet || {};
-				Self.AddToList(Code, snippet.title);
-				Self.ClearInput();
-			}
-		);
-	}
-
-	function SearchYouTube(Query)
-	{
-		JSONP.get
-		(
-			"https://www.googleapis.com/youtube/v3/search",
-			{
-				"part": "snippet",
-				"q": Query,
-				"maxResults": 2,
-				"key": YouTubeKey
-			},
-			function(Data)
-			{
-				Self.SearchResults.removeAll();
-				((Data || {}).items || []).forEach
-				(
-					function(video)
-					{
-						video = video || {};
-						let snippet = video.snippet || {};
-						let title = snippet.title;
-						let video_id = (video.id || {}).videoId;
-						let author = snippet.channelTitle;
-						let thumbnails = (snippet.thumbnails || {});
-						let thumbnail_url = (thumbnails[Object.keys(thumbnails)[0]] || {}).url;
-						// TODO: duration from videos.list call?
-
-						let SearchResult =
-						{
-							"Code": video_id,
-							"Title": title,
-							"Author": author,
-							"ThumbnailURL": thumbnail_url,
-							"Duration": 0
-							
-						};
-
-						Self.SearchResults.push(SearchResult);
-					}
-				);
-			}
-		);
-	}
-
-	Self.Remove = function(Item)
-	{
-		if (!confirm("¿Estas Seguro que deseas Eliminar? \"" + Item.Title + "\"?")) return;
-
-		if (Self.Current() == Item)
-			Self.Current(null);
-
-		Self.List.remove(Item);
-	}
-
-	Self.RemoveCurrent = function() { if (Self.Current()) Self.Remove(Self.Current()); };
-	Self.RemoveAll = function()
-	{
-		if (!confirm("Estás segura de que quieres eliminar todo?")) return;
-		Self.Current(null);
-		Self.List.removeAll();
-	}
-
-	Self.Current = ko.observable();
-	Self.Play = function(Item)
-	{
-		Player.loadVideoById(Item.Code, Item.StartAt());
-		Self.Current(Item);
-	}
-
-	Self.List.subscribe
-	(
-		function()
-		{
-			if (Self.List().length == 0)
-			{
-				if (Player && Self.Current()) Player.stopVideo();
-				return;
-			}
-
-			if (!Self.Current()) Self.PlaySomething();
-		}
-	);
-
-	Self.Loop = ko.observable(false);
-	Self.PlaySomething = function()
-	{
-		let List = Self.FilteredList();
-		let Item = List[~~(Math.random() * List.length)];
-		if (!Item) return;
-
-		Self.Play(Item);
-	}
-
-	Self.VideoStateChangeHandler = function(E)
-	{
-		if (E.data == YT.PlayerState.ENDED)
-		{
-			if (Self.Loop()) Self.Play(Self.Current());
-			else Self.PlaySomething();
-		}
-	}
-
-	Self.ShowImport = ko.observable(false);
-	Self.ToggleShowImport = function() { Self.ShowImport(!Self.ShowImport()); };
-	Self.ImportString =  ko.observable();
-	Self.Import = function()
-	{
-		if (Import(Self.ImportString()))
-			Self.ImportString("");
-	}
-
-	function Import(ImportString)
-	{
-		try
-		{
-			let List = JSON.parse(ImportString);
-			List.forEach(function(L) { Self.List().push(new ItemModel(L)); });
-			Self.List.valueHasMutated();
-			SaveToLocalStorage();
-			return true;
-		}
-		catch(E) { alert("import failed"); }
-	}
-
-	Self.ShowExport = ko.observable(false);
-	Self.ToggleShowExport = function() { Self.ShowExport(!Self.ShowExport()); };
-	Self.ExportString = ko.computed(function() { return ko.toJSON(Self.List()); });
-
-	Self.Select = function(Model, Event) { Event.toElement.select(); }
-	Self.ClearInput = function()
-	{
-		Self.InputValue("");
-		Self.SearchResults.removeAll();
-	}
-
-	Self.ClearFilter = function()
-	{
-		Self.Filter("");
-	}
-
-	function SaveToLocalStorage() { localStorage[LocalStorageKey] = ko.toJSON(Self.List()); }
-
-	Player = new YT.Player
-	(
-		"player-container",
-		{
-			"events":
-			{
-				"onStateChange": Self.VideoStateChangeHandler,
-				"onReady": function()
-				{
-					if (localStorage[LocalStorageKey] && Self.List().length == 0)
-						Import(localStorage[LocalStorageKey]);
-
-					setInterval(SaveToLocalStorage, 5000);
-				}
-			}
-		}
-	);
-
-	// This is the callback for a computed observable, defined above.
-	function FilteredList()
-	{
-		if (!Self.Filter()) return Self.List();
-		return Self.List().filter(function(V) { return V.Title.toLowerCase().indexOf(Self.Filter().toLowerCase()) > -1; });
-	}
-
-	Self.AddSearchResultToList = function()
-	{
-		Self.AddToList(this.Code, this.Title);
-		Self.ClearInput();
-	}
-}
-
-let YouTubeScript = document.createElement("script");
-YouTubeScript.src = "https://www.youtube.com/iframe_api";
-document.head.appendChild(YouTubeScript);
-</script>
- 
-</script>
-
-</>
-<!-- nav -->
-<nav class="navbar navbar-light bg-light">
-	<a class="navbar-brand" href="#">
-	  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/DC_Comics_logo.png/600px-DC_Comics_logo.png" width="30" height="30" class="d-inline-block align-top" alt="">
-	  Bootstrap
-	</a>
-  </nav>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Landing Page</title>
+    <link rel="stylesheet" href="estilos.css">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,700,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet"> 
+</head>
 
 <body>
-
-
-	
-	<div class="padded">
-		<form data-bind="submit: ProcessInput">
-			<div class="input-group input-group-lg">
-				<input type="text" class="form-control" placeholder="Busca cualquier en Youtube..." data-bind="value: InputValue">
-				<span class="input-group-btn">
-					<button class="btn" data-bind="click: ClearInput" type="button">&times;</button>
-				</span>
-			</div>
-		</form>
-	</div>
-
-	<!-- ko if: InputValue() && SearchResults().length > 0 -->
-	<div class="row" data-bind="foreach: SearchResults">
-		<div class="col-xs-3">
-			<div class="thumbnail pointer" data-bind="click: $parent.AddSearchResultToList">
-				<img data-bind="attr: { src: ThumbnailURL }">
-				<div class="caption">
-					<h4 class="ellipsis" data-bind="text: Title"></h4>
-					<div data-bind="text: Duration"></div>
-					<h6 data-bind="text: Author"></div>
-				</div>
-			</div>
-		</div>
-	</div>
-	<!-- /ko -->
-
-	<div>
-		<div id="list">
-			<div class="row" style="margin: auto 1em">
-				<div class="col-xs-6" data-bind="text: List().length + ' item' + (List().length == 1 ? '' : 's')" style="padding-top: 0.5em"></div>
-				<div class="col-xs-6">
-					<button style="width: 100%" class="btn" data-bind="click: RemoveAll">Eliminar toda la playlist</button>
-				</div>
-			</div>
-
-			<div class="row" style="margin: 1em">
-				<div class="input-group">
-					<input type="text" class="form-control" data-bind="value: Filter, valueUpdate: 'keyup'" placeholder="filter...">
-					<span class="input-group-btn">
-						<button class="btn" data-bind="click: ClearFilter" type="button">&times;</button>
-					</span>
-				</div>
-			</div>
-
-			<ul data-bind="foreach: FilteredList">
-				<li class="well well-sm">
-					<button class="close" data-bind="click: $parent.Remove">&times;</button>
-					<div class="pointer ellipsis" data-bind="text: Title, click: $parent.Play, attr: { title: Title }"></div>
-					<div class="start-at">
-						<span>start at</span>
-						<input type="text" data-bind="value: StartAt">
-					</div>
-				</li>
-			</ul>
-		</div>
-
-		<div id="video">
-			<div style="width: 50em">
-				<button data-bind="click: PlaySomething" class="btn btn-primary"> Suena La musica </button>
-				<span class="padded" data-bind="if: Current">
-					<label><input type="checkbox" data-bind="checked: Loop">Repetir Canción</label>
-				</span>
-
-				<div data-bind="if: Current" style="margin-bottom: 1em">
-					<h3 class="ellipsis" data-bind="text: Current().Title"></h3>
-								</div>
-			</div>
-			<div id="player-container"></div>
-			<br>
-			<!-- Esta es la parte que hay que corregir importa las listas de reproducción. 
-			<label for="import" data-bind="click: ToggleShowImport"><h4><a href="#">batch import</a></h4></label>
-			 
-			<textarea id="import" class="form-control" style="height: 10em" data-bind="value: ImportString"></textarea>
-			<br>
-			<button data-bind="click: Import" class="btn btn-primary">import this stuff</button>
-			 
-
-			<br>
-
-			<label for="export" data-bind="click: ToggleShowExport"><h4><a href="#">batch export</a></h4></label>
-			   
-			<input id="export" type="text" class="form-control" data-bind="value: ExportString, click: Select" readonly>
-			  -->
-
-		</div>
-	</div>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="#" id="icono" class="icono">Menú</a>
+                <div class="enlaces uno" id="enlaces">
+                    <a href="">Inicio</a>
+                    <a href="">Acerca de</a>
+                    <a href="">Contacto</a>
+                </div>
+            </nav>
+            
+            <div class="textos">
+            <h1>DaCreativo!</h1>
+                
+                <div id=make>   
+                    <div id=flip>
+                        <div><div>Analizar!</div></div>
+                        <div><div>Proponer</div></div>
+                        <div><div>Crear</div></div>
+                    </div>
+                <h2>D.I Danrlei Smith Ariza Calderón</h2>
+                    
+                    <span class="di">"Transformando el Mundo en un lugar mejor"</span> 
+                    </div>
+                
+                <a href="#">Contacto</a>
+            </div>
+            <img src="vector.png" alt="">
+        </div>
+    </header>
+    <div class="wave">
+        <div style="height: 150px; overflow: hidden;" ><svg viewBox="0 0 500 150" preserveAspectRatio="none" style="height: 100%; width: 100%;"><path d="M0.00,49.98 C150.00,150.00 349.20,-50.00 500.00,49.98 L500.00,150.00 L0.00,150.00 Z" style="stroke: none; fill: #fff;"></path></svg></div>
+    </div>
+    <script src="script.js"></script>
 </body>
+
 </html>
